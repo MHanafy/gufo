@@ -163,6 +163,7 @@ endif()
 
 # Qwen3.8-Flash-Next — model-private CPU reference plus ROCm runtime.
 add_subdirectory(src/models/qwen38_flash_next)
+add_subdirectory(src/models/lfm3)
 
 # Qwen3-TTS — CPU reference + HIP kernels (CustomVoice 12Hz).
 add_subdirectory(src/models/qwen3_tts)
@@ -377,8 +378,9 @@ endif()
 add_library(gufo_llm_cli STATIC
   src/cli/bench/bench.cpp
   src/cli/prompt/prompt.cpp)
-target_link_libraries(gufo_llm_cli PUBLIC gufo_core gufo_qwen38_flash_next)
+target_link_libraries(gufo_llm_cli PUBLIC gufo_core gufo_qwen38_flash_next gufo_lfm3)
 if(ENGINE_ENABLE_HIP)
+  target_sources(gufo_llm_cli PRIVATE src/cli/prompt/lfm3.cpp src/cli/serve/lfm3_runner.cpp)
   target_link_libraries(gufo_llm_cli PUBLIC gufo_deepseek_v4_flash)
 endif()
 
@@ -707,6 +709,7 @@ if (BUILD_TESTING)
 
   add_subdirectory(tests/models/deepseek_v4_flash)
   add_subdirectory(tests/models/qwen38_flash_next)
+  add_subdirectory(tests/models/lfm3)
 
   if(ENGINE_ENABLE_HIP)
     add_executable(chat_template_hf_token_golden_test

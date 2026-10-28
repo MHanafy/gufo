@@ -29,6 +29,39 @@ bool Accepts(const JsonConstraint& grammar, std::string_view text) {
   return grammar.Complete(state);
 }
 
+void TestFiniteArraysWithoutItems() {
+  using Format = JsonConstraint::ToolFormat;
+  const auto array =
+      parse(R"({"type":"array","const":[true,null,{"key":"value"}]})");
+  const auto finite = JsonConstraint::Compile(array, true, true);
+  assert(Accepts(*finite, R"([true,null,{"key":"value"}])"));
+  assert(!Accepts(*finite, "[]"));
+  const auto generic =
+      JsonConstraint::Compile(parse(R"({"type":"array"})"), true, true);
+  assert(Accepts(*generic, "[]"));
+  assert(Accepts(*generic, R"([1,true,null,{"x":["y"]}])"));
+  const auto schema = parse(
+      R"({"type":"object","properties":{"values":{"type":"array","const":[true,null,{"key":"value"}]}},"required":["values"],"additionalProperties":false})");
+  for (auto format : {Format::kJson, Format::kQwen, Format::kDeepSeek}) {
+    for (bool strict : {false, true}) {
+      const auto grammar =
+          JsonConstraint::ToolParameters(schema, strict, format);
+      const auto wrap = [&](std::string_view value) {
+        if (format == Format::kJson)
+          return "{\"values\":" + std::string(value) + "}";
+        if (format == Format::kQwen)
+          return "<parameter=values>\n" + std::string(value) +
+                 "\n</parameter>\n";
+        return "<｜DSML｜parameter name=\"values\" string=\"false\">" +
+               std::string(value) + "</｜DSML｜parameter>\n";
+      };
+      assert(Accepts(*grammar, wrap(R"([true,null,{"key":"value"}])")));
+      assert(!Accepts(*grammar, wrap("[]")));
+      assert(!Accepts(*grammar, wrap(R"([true,null,{"key":"wrong"}])")));
+    }
+  }
+}
+
 void TestWideNativeArgumentOrder() {
   using Format = JsonConstraint::ToolFormat;
   for (const auto format : {Format::kQwen, Format::kDeepSeek}) {

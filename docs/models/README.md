@@ -6,6 +6,7 @@ are downloaded separately and are not part of the runtime package.
 
 | Model | Weights / supported inputs | Guide |
 | --- | --- | --- |
+| LFM3 1.7B | Q8_0/BF16/F16 GGUF; text | [Usage and precision](lfm3/README.md) |
 | DeepSeek V4 Flash | Flash 0731 mixed IQ2/Q2/Q8 GGUF; text | [Usage and modes](deepseek-v4-flash/README.md) |
 | Qwen3.8 27B | Q4/Q8 GGUF; text/images | [Usage and modes](qwen3.8-27b/README.md) |
 | Qwen3.8 Flash-Next | Sharded Q4 GGUF; text/images | [Usage and modes](qwen3.8-flash-next/README.md) |

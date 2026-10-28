@@ -1683,8 +1683,6 @@ private:
   }
   std::uint32_t Array(const json::Value& schema, std::size_t depth) {
     const auto* items = schema.find("items");
-    if (!items)
-      Invalid("arrays require an items schema");
     auto bound = [&](const char* name, std::size_t fallback) {
       const auto* value = schema.find(name);
       if (!value)
@@ -1700,7 +1698,11 @@ private:
         bound("maxItems", std::numeric_limits<std::uint32_t>::max());
     if (minimum > maximum)
       throw JsonSchemaEmpty("JSON Schema: minItems exceeds maxItems");
-    const auto item = Visit(*items, depth + 1);
+    // Omitted items means any JSON value. Requiring it also discarded a
+    // valid array const/enum while validating its unconstrained base schema,
+    // causing native non-strict tools to fall back to unconstrained arrays.
+    const auto item =
+        items ? Visit(*items, depth + 1) : GenericValue(kMaxDepth - depth);
     if (maximum == 0)
       return Seq({Byte('['), ws_, Byte(']')});
     const auto additional = Seq({ws_, Byte(','), ws_, item});

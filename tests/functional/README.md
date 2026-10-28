@@ -906,3 +906,20 @@ nix develop -c python3 tests/functional/embedding_audio.py \
   --base-url http://127.0.0.1:8080/v1 --server-log /path/to/server.log \
   --output /tmp/audio-embeddings.json
 ```
+
+## LFM3 focused qualification
+
+The LFM3 backend has explicit standalone checks:
+`lfm3.py` exercises a running HTTP server, and `lfm3_logits.py` compares full
+logits against the pinned independent teacher. See
+[the LFM3 tools guide](../../tools/lfm3/README.md). Both retain raw evidence
+under `artifacts/lfm3/`; they are outside hosted model CI and the ordinary
+multi-model functional matrix.
+
+The full text API matrix also accepts `--sampling-preset lfm3`. Its expected
+sampling defaults are temperature 0.1, top-p 1.0, top-k 50 and repetition penalty
+1.1. Native tools, structured output, effort/thinking controls, physical batched
+decode and RAM/disk continuations use the common harness without relaxed
+assertions. Run `--suite all --tier full` with text inputs and sufficient context
+(the retained release run uses 32768 tokens). A failed full matrix is retained
+separately from passing focused checks; model output failures remain failures.
