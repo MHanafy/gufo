@@ -28,6 +28,7 @@
 
 #include "src/core/mapped_prefetch.hpp"
 #include "src/core/platform/mapped_file.hpp"
+#include "src/core/platform/pages.hpp"
 #include "src/models/minimax_h3/prompt_encoder.hpp"
 #include "src/models/minimax_h3/prompt_encoder_ops.hip.hpp"
 
@@ -333,6 +334,7 @@ bool ReadIntervalPinned(const std::filesystem::path& path, std::uint64_t offset,
   }
   mapping->pinned = true;
   mapping->bytes = length;
+  g_registered_host_bytes.fetch_add(length, std::memory_order_acq_rel);
   std::string open_error;
   const platform::PlatformFile file = platform::OpenReadFile(path, &open_error);
   if (!platform::FileValid(file)) {
@@ -391,31 +393,33 @@ BatchLoadResult LoadBatch(const ModelInventory& inventory,
       HostMapping mapping;
       mapping.shard = interval.shard;
       mapping.file_offset = interval.begin;
-#if defined(_WIN32)
-      if (!ReadIntervalPinned(path, interval.begin, length, &mapping,
-                              &result.error)) {
-        return result;
+      if (!platform::FileViewsSupportHostRegistration()) {
+        if (!ReadIntervalPinned(path, interval.begin, length, &mapping,
+                                &result.error)) {
+          return result;
+        }
+      } else {
+        std::string map_error;
+        if (!mapping.mapping_file.OpenRange(path, interval.begin, length,
+                                            platform::MapHint::kNone,
+                                            &map_error)) {
+          result.error =
+              "cannot map H3 text shard " + path.string() + ": " + map_error;
+          return result;
+        }
+        mapping.host = mapping.mapping_file.data;
+        mapping.bytes = length;
+        core::PrefaultMappedRange(mapping.host, length);
+        status =
+            hipHostRegister(mapping.host, length,
+                            hipHostRegisterMapped | hipHostRegisterReadOnly);
+        if (status != hipSuccess) {
+          result.error = HipError("hipHostRegister(mapped|readonly)", status);
+          return result;
+        }
+        mapping.registered = true;
+        g_registered_host_bytes.fetch_add(length, std::memory_order_acq_rel);
       }
-#else
-      std::string map_error;
-      if (!mapping.mapping_file.OpenRange(path, interval.begin, length,
-                                          platform::MapHint::kNone,
-                                          &map_error)) {
-        result.error =
-            "cannot map H3 text shard " + path.string() + ": " + map_error;
-        return result;
-      }
-      mapping.host = mapping.mapping_file.data;
-      mapping.bytes = length;
-      core::PrefaultMappedRange(mapping.host, length);
-      status = hipHostRegister(mapping.host, length,
-                               hipHostRegisterMapped | hipHostRegisterReadOnly);
-      if (status != hipSuccess) {
-        result.error = HipError("hipHostRegister(mapped|readonly)", status);
-        return result;
-      }
-      mapping.registered = true;
-#endif
       status = hipHostGetDevicePointer(&mapping.device, mapping.host, 0);
       if (status != hipSuccess) {
         result.error =
@@ -423,8 +427,7 @@ BatchLoadResult LoadBatch(const ModelInventory& inventory,
         return result;
       }
       const std::uint64_t registered =
-          g_registered_host_bytes.fetch_add(length, std::memory_order_acq_rel) +
-          length;
+          g_registered_host_bytes.load(std::memory_order_acquire);
       batch.peak_registered_bytes =
           std::max(batch.peak_registered_bytes, registered);
       mappings.push_back(std::move(mapping));

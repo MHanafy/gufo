@@ -17,6 +17,11 @@
 #include "src/core/platform/pages.hpp"
 
 namespace gufo::platform {
+
+bool FileViewsSupportHostRegistration() noexcept {
+  return true;
+}
+
 namespace {
 
 // Ordinary anonymous pages, populated before use. Opting out of THP before

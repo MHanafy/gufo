@@ -74,10 +74,11 @@ bool HasSentinel(const std::filesystem::path& path) {
 }
 
 bool HasPartialFor(const std::filesystem::path& path) {
-  const std::string prefix = path.filename().string() + ".gufo-partial-";
+  const auto prefix = path.filename().native() +
+                      std::filesystem::path(".gufo-partial-").native();
   for (const std::filesystem::directory_entry& entry :
        std::filesystem::directory_iterator(path.parent_path())) {
-    if (entry.path().filename().string().starts_with(prefix)) {
+    if (entry.path().filename().native().starts_with(prefix)) {
       return true;
     }
   }
@@ -94,7 +95,8 @@ int main() {
   constexpr int kOutputHeight = 48;
   constexpr int kSamples = 29600;
   const std::filesystem::path output =
-      std::filesystem::temp_directory_path() / "gufo-h3-media-test.mp4";
+      std::filesystem::temp_directory_path() /
+      std::filesystem::path(u8"gufo-h3-média-测试 test.mp4");
   const std::filesystem::path cancelled_output =
       std::filesystem::temp_directory_path() /
       "gufo-h3-media-cancelled-test.mp4";

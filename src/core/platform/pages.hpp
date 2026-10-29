@@ -7,6 +7,10 @@
 
 namespace gufo::platform {
 
+/// Whether read-only file views can be registered with the HIP host runtime.
+/// Windows section views require reading into a pinned allocation instead.
+bool FileViewsSupportHostRegistration() noexcept;
+
 struct SharedTempMapping {
   void* data = nullptr;
   std::size_t size = 0;

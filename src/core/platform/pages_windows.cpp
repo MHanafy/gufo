@@ -16,6 +16,10 @@
 
 namespace gufo::platform {
 
+bool FileViewsSupportHostRegistration() noexcept {
+  return false;
+}
+
 void* CommitZeroedPages(std::size_t bytes) noexcept {
   // Reserving and committing together hands out zero-filled ordinary pages;
   // the OS maps them on first touch.

@@ -1,6 +1,8 @@
 # The OS leaves. The Linux build and the Windows platform-only build
 # (GUFO_PLATFORM_ONLY) share this list.
 add_library(gufo_platform STATIC
+  "$<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/process_windows.cpp>"
+  "$<$<NOT:$<PLATFORM_ID:Windows>>:${CMAKE_CURRENT_SOURCE_DIR}/process_posix.cpp>"
   env.cpp
   mapped_file.cpp
   net.cpp
