@@ -347,9 +347,13 @@ jobs:
             if (Test-Path "$bundle\$dir") { Copy-Item "$bundle\$dir" $dist -Recurse }
           }
           $archive = "$env:RUNNER_TEMP\gufo-$env:RELEASE_TAG-windows-x86_64.zip"
-          # Windows' libarchive tar supports ZIP64 for the HIP runtime.
-          tar -a -cf $archive -C $dist .
+          # Windows' libarchive tar supports ZIP64 for the HIP runtime. Pack
+          # the top-level items by name, not '.': Explorer's ZIP folder lists
+          # nothing when entry names carry the resulting './' prefix.
+          tar -a -cf $archive -C $dist @((Get-ChildItem $dist).Name)
           if ($LASTEXITCODE -ne 0) { throw 'cannot pack Windows release' }
+          python -c "import sys, zipfile; sys.exit(any(n.startswith('./') for n in zipfile.ZipFile(sys.argv[1]).namelist()))" $archive
+          if ($LASTEXITCODE -ne 0) { throw 'release ZIP names entries ./-prefixed, hiding them from Windows Explorer' }
           # Validate the exact release ZIP, not only its staging directory.
           $extracted = "$env:RUNNER_TEMP/gufo-release-verify"
           New-Item -ItemType Directory -Force $extracted | Out-Null
